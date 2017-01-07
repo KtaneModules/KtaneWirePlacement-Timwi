@@ -17,10 +17,10 @@ namespace WirePlacement
         const double _wireMaxBézierDeviation = .01;
 
         const double _bottom = -.02;
-        const double _firstControlHeight = .03;
-        const double _interpolateHeight = .02;
-        const double _firstControlHeightHighlight = .0175;
-        const double _interpolateHeightHighlight = .0075;
+        const double _firstControlHeight = .01;
+        const double _interpolateHeight = .005;
+        const double _firstControlHeightHighlight = .005;
+        const double _interpolateHeightHighlight = .003;
 
         sealed class CPC { public Pt ControlBefore, Point, ControlAfter; }
 
@@ -36,7 +36,7 @@ namespace WirePlacement
             var start = pt(0, _bottom, 0);
             var startControl = pt(0, firstControlHeight, 0);    // x was length / 10
             var endControl = pt(length, firstControlHeight, 0);  // x was length * 9 / 10
-            var end = pt(length, 0, 0);
+            var end = pt(length, _bottom, 0);
 
             var bézierSteps = 16;
             var tubeRevSteps = 16;

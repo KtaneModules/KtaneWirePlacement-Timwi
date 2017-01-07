@@ -94,9 +94,6 @@ public class WirePlacementModule : MonoBehaviour
             var wireHighlight = wireObj.transform.Find(string.Format("Wire {0} highlight", wire.Index + 1));
             var highlightMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Uncut, true, seed);
             wireHighlight.GetComponent<MeshFilter>().mesh = highlightMesh;
-            wireHighlight.localPosition = new Vector3(0, 0, 0);
-            wireHighlight.localScale = new Vector3(1, 1, 1);
-            wireHighlight.localEulerAngles = new Vector3(0, 0, 0);
 
             var wireHighlightClone = wireHighlight.Find("Highlight(Clone)");
             if (wireHighlightClone != null)
