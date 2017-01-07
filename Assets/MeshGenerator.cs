@@ -16,8 +16,9 @@ namespace WirePlacement
         const double _wireMinBézierDeviation = .005;
         const double _wireMaxBézierDeviation = .01;
 
-        const double _firstControlHeight = .02;
-        const double _interpolateHeight = .01;
+        const double _bottom = -.02;
+        const double _firstControlHeight = .03;
+        const double _interpolateHeight = .02;
         const double _firstControlHeightHighlight = .0175;
         const double _interpolateHeightHighlight = .0075;
 
@@ -32,9 +33,9 @@ namespace WirePlacement
             var firstControlHeight = highlight ? _firstControlHeightHighlight : _firstControlHeight;
             var interpolateHeight = highlight ? _interpolateHeightHighlight : _interpolateHeight;
 
-            var start = pt(0, 0, 0);
-            var startControl = pt(length / 10, firstControlHeight, 0);
-            var endControl = pt(length * 9 / 10, firstControlHeight, 0);
+            var start = pt(0, _bottom, 0);
+            var startControl = pt(0, firstControlHeight, 0);    // x was length / 10
+            var endControl = pt(length, firstControlHeight, 0);  // x was length * 9 / 10
             var end = pt(length, 0, 0);
 
             var bézierSteps = 16;
@@ -86,19 +87,21 @@ namespace WirePlacement
                 }
             });
 
-            var rotAngle = (rnd.NextDouble() * 7 + 5) * (rnd.Next(2) == 0 ? -1 : 1);
+            var cutOffEarly = rnd.Next(2) == 0;
+            var angleForward = rnd.Next(2) == 0;
+            var rotAngle = (rnd.NextDouble() * 20 + 10) * (angleForward ? -1 : 1);
             var rotAxisStart = new Pt(0, 0, 0);
-            var rotAxisEnd = new Pt(rnd.NextDouble() * .01, rnd.NextDouble() * .01, 1);
+            var rotAxisEnd = new Pt(rnd.NextDouble() * .01, 1, rnd.NextDouble() * .01);
             Func<Pt, Pt> rot = p => p.Rotate(rotAxisStart, rotAxisEnd, rotAngle);
             var beforeCut =
                 new[] { new CPC { ControlBefore = default(Pt), Point = start, ControlAfter = startControl } }
-                .Concat(intermediatePoints.Take(numSegments / 2).Select((p, i) => new CPC { ControlBefore = rot(p - deviations[i]), Point = rot(p), ControlAfter = rot(p + deviations[i]) }));
+                .Concat(intermediatePoints.Take((cutOffEarly ? numSegments : numSegments + 1) / 2).Select((p, i) => new CPC { ControlBefore = rot(p - deviations[i]), Point = rot(p), ControlAfter = rot(p + deviations[i]) }));
             var bcTube = partialWire(beforeCut);
 
-            var cutOffPoint = (numSegments - 1) / 2;
-            rotAngle = (rnd.NextDouble() * 7 + 5) * (rnd.Next(2) == 0 ? -1 : 1);
+            var cutOffPoint = (cutOffEarly ? numSegments - 2 : numSegments - 1) / 2;
+            rotAngle = (rnd.NextDouble() * 20 + 10) * (angleForward ? -1 : 1);
             rotAxisStart = new Pt(length, 0, 0);
-            rotAxisEnd = new Pt(length + rnd.NextDouble() * .01, rnd.NextDouble() * .01, 1);
+            rotAxisEnd = new Pt(length + rnd.NextDouble() * .01, 1, rnd.NextDouble() * .01);
             var afterCut =
                 new[] { new CPC { ControlBefore = default(Pt), Point = end, ControlAfter = endControl } }
                 .Concat(intermediatePoints.Skip(cutOffPoint).Select((p, i) => new CPC { ControlBefore = rot(p + deviations[i + cutOffPoint]), Point = rot(p), ControlAfter = rot(p - deviations[i + cutOffPoint]) }).Reverse());

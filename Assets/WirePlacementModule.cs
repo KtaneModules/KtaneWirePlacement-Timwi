@@ -22,24 +22,76 @@ public class WirePlacementModule : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("[Wire Placement] Started");
+        List<WireInfo> wireInfos;
+        var isSolved = false;
 
-        for (int i = 0; i < 8; i++)
+        do
         {
-            var j = i;
+            wireInfos = new List<WireInfo>();
+            var taken = Ut.NewArray<bool>(4, 4);
+            var px = 0;
+            var py = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                while (taken[px][py])
+                {
+                    px++;
+                    if (px == 4)
+                    {
+                        py++;
+                        px = 0;
+                    }
+                }
+
+                var vert = px == 3 || taken[px + 1][py] ? true : py == 3 || taken[px][py + 1] ? false : Rnd.Range(0, 2) == 0;
+                taken[px][py] = true;
+                taken[vert ? px : px + 1][vert ? py + 1 : py] = true;
+                var color = (WireColor) Rnd.Range(0, 5);
+
+                Func<string, bool> mustCut = coords => coords.Split(',').Any(coord =>
+                {
+                    var x = coord[0] - 'A';
+                    var y = coord[1] - '1';
+                    return (px == x && py == y) || (px == (vert ? x : x - 1) && py == (vert ? y - 1 : y));
+                });
+
+                wireInfos.Add(new WireInfo
+                {
+                    Index = i,
+                    Column = px,
+                    Row = py,
+                    Color = color,
+                    IsVertical = vert,
+                    MustCut =
+                        color == WireColor.Black ? mustCut("B1") :
+                        color == WireColor.Blue ? mustCut("A2,C3") :
+                        color == WireColor.Red ? mustCut("A1,C4") :
+                        color == WireColor.White ? mustCut("D3,B2") :
+                        color == WireColor.Yellow ? mustCut("D2,A3,D1") :
+                        false
+                });
+            }
+        }
+        while (wireInfos.All(w => !w.MustCut));
+
+        foreach (var wireFE in wireInfos)
+        {
+            var wire = wireFE;
+
+            Debug.LogFormat("[Wire Placement] {0} wire (#{5}) {1} from {2},{3} {4} be cut.", wire.Color, wire.IsVertical ? "vertical" : "horizontal", wire.Column + 1, wire.Row + 1, wire.MustCut ? "must" : "must not", wire.Index + 1);
+
             var seg = Rnd.Range(3, 5);
             var seed = Rnd.Range(0, int.MaxValue);
-            var wireColor = Rnd.Range(0, WireMaterials.Length);
 
-            var wireObj = MainSelectable.transform.Find(string.Format("Wire {0}", i + 1));
+            var wireObj = MainSelectable.transform.Find(string.Format("Wire {0}", wire.Index + 1));
             wireObj.GetComponent<MeshFilter>().mesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Uncut, false, seed);
-            wireObj.GetComponent<MeshRenderer>().material = WireMaterials[wireColor];
+            wireObj.GetComponent<MeshRenderer>().material = WireMaterials[(int) wire.Color];
 
-            wireObj.localPosition = new Vector3(-0.0608f * (i % 2), .029f, 0.0304f * (i / 2) - 0.0608f);
+            wireObj.localPosition = new Vector3(0.0304f * wire.Column - 0.0608f, .029f, -0.0304f * wire.Row + 0.0304f);
             wireObj.localScale = new Vector3(1, 1, 1);
-            wireObj.localEulerAngles = new Vector3(0, 0, 0);
+            wireObj.localEulerAngles = new Vector3(0, wire.IsVertical ? 90f : 0f, 0);
 
-            var wireHighlight = wireObj.transform.Find(string.Format("Wire {0} highlight", i + 1));
+            var wireHighlight = wireObj.transform.Find(string.Format("Wire {0} highlight", wire.Index + 1));
             var highlightMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Uncut, true, seed);
             wireHighlight.GetComponent<MeshFilter>().mesh = highlightMesh;
             wireHighlight.localPosition = new Vector3(0, 0, 0);
@@ -53,16 +105,15 @@ public class WirePlacementModule : MonoBehaviour
             var cutMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Cut, false, seed);
             var cutHighlightMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Cut, true, seed);
             var copperMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Copper, false, seed);
-            var interacted = false;
 
             wireObj.GetComponent<KMSelectable>().OnInteract = delegate
             {
-                if (interacted)
+                if (isSolved || wire.IsCut)
                     return false;
-                interacted = true;
+                wire.IsCut = true;
 
                 wireObj.GetComponent<MeshFilter>().mesh = cutMesh;
-                var copperObj = new GameObject { name = string.Format("Wire {0} copper", j + 1) }.transform;
+                var copperObj = new GameObject { name = string.Format("Wire {0} copper", wire.Index + 1) }.transform;
                 copperObj.parent = wireObj;
                 copperObj.localPosition = new Vector3(0, 0, 0);
                 copperObj.localEulerAngles = new Vector3(0, 0, 0);
@@ -74,13 +125,25 @@ public class WirePlacementModule : MonoBehaviour
                 wireHighlightClone = wireHighlight.Find("Highlight(Clone)");
                 if (wireHighlightClone != null)
                     wireHighlightClone.GetComponent<MeshFilter>().mesh = cutHighlightMesh;
+
+                Debug.LogFormat("[Wire Placement] Cutting {0} wire (#{5}) {1} from {2},{3} was {4}.", wire.Color, wire.IsVertical ? "vertical" : "horizontal", wire.Column + 1, wire.Row + 1, wire.MustCut ? "correct" : "incorrect", wire.Index + 1);
+
+                if (!wire.MustCut)
+                {
+                    Module.HandleStrike();
+                }
+                else if (wireInfos.All(w => !w.MustCut || w.IsCut))
+                {
+                    isSolved = true;
+                    Module.HandlePass();
+                }
+
                 return false;
             };
-        }
-    }
 
-    void ActivateModule()
-    {
-        Debug.Log("[Wire Placement] Activated");
+            MainSelectable.Children[wire.Column + 4 * wire.Row] = wireObj.GetComponent<KMSelectable>();
+            MainSelectable.Children[wire.Column + (wire.IsVertical ? 0 : 1) + 4 * (wire.Row + (wire.IsVertical ? 1 : 0))] = wireObj.GetComponent<KMSelectable>();
+        }
+        MainSelectable.UpdateChildren();
     }
 }
