@@ -25,54 +25,57 @@ public class WirePlacementModule : MonoBehaviour
         List<WireInfo> wireInfos;
         var isSolved = false;
 
-        do
+        retry:
+        wireInfos = new List<WireInfo>();
+        var taken = Ut.NewArray<bool>(4, 4);
+        var px = 0;
+        var py = 0;
+        for (int i = 0; i < 8; i++)
         {
-            wireInfos = new List<WireInfo>();
-            var taken = Ut.NewArray<bool>(4, 4);
-            var px = 0;
-            var py = 0;
-            for (int i = 0; i < 8; i++)
+            while (taken[px][py])
             {
-                while (taken[px][py])
+                px++;
+                if (px == 4)
                 {
-                    px++;
-                    if (px == 4)
-                    {
-                        py++;
-                        px = 0;
-                    }
+                    py++;
+                    px = 0;
                 }
-
-                var vert = px == 3 || taken[px + 1][py] ? true : py == 3 || taken[px][py + 1] ? false : Rnd.Range(0, 2) == 0;
-                taken[px][py] = true;
-                taken[vert ? px : px + 1][vert ? py + 1 : py] = true;
-                var color = (WireColor) Rnd.Range(0, 5);
-
-                Func<string, bool> mustCut = coords => coords.Split(',').Any(coord =>
-                {
-                    var x = coord[0] - 'A';
-                    var y = coord[1] - '1';
-                    return (px == x && py == y) || (px == (vert ? x : x - 1) && py == (vert ? y - 1 : y));
-                });
-
-                wireInfos.Add(new WireInfo
-                {
-                    Index = i,
-                    Column = px,
-                    Row = py,
-                    Color = color,
-                    IsVertical = vert,
-                    MustCut =
-                        color == WireColor.Black ? mustCut("B1") :
-                        color == WireColor.Blue ? mustCut("A2,C3") :
-                        color == WireColor.Red ? mustCut("A1,C4") :
-                        color == WireColor.White ? mustCut("D3,B2") :
-                        color == WireColor.Yellow ? mustCut("D2,A3,D1") :
-                        false
-                });
             }
+
+            // Rare situation in which the board is impossible to fill
+            if (py == 3 && (px == 3 || taken[px + 1][py]))
+                goto retry;
+
+            var vert = px == 3 || taken[px + 1][py] ? true : py == 3 || taken[px][py + 1] ? false : Rnd.Range(0, 2) == 0;
+            taken[px][py] = true;
+            taken[vert ? px : px + 1][vert ? py + 1 : py] = true;
+            var color = (WireColor) Rnd.Range(0, 5);
+
+            Func<string, bool> mustCut = coords => coords.Split(',').Any(coord =>
+            {
+                var x = coord[0] - 'A';
+                var y = coord[1] - '1';
+                return (px == x && py == y) || (px == (vert ? x : x - 1) && py == (vert ? y - 1 : y));
+            });
+
+            wireInfos.Add(new WireInfo
+            {
+                Index = i,
+                Column = px,
+                Row = py,
+                Color = color,
+                IsVertical = vert,
+                MustCut =
+                    color == WireColor.Black ? mustCut("B1") :
+                    color == WireColor.Blue ? mustCut("A2,C3") :
+                    color == WireColor.Red ? mustCut("A1,C4") :
+                    color == WireColor.White ? mustCut("D3,B2") :
+                    color == WireColor.Yellow ? mustCut("D2,A3,D1") :
+                    false
+            });
         }
-        while (wireInfos.All(w => !w.MustCut));
+        if (wireInfos.All(w => !w.MustCut))
+            goto retry;
 
         foreach (var wireFE in wireInfos)
         {
