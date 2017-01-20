@@ -22,6 +22,19 @@ public class WirePlacementModule : MonoBehaviour
 
     void Start()
     {
+        var solutions = Ut.NewArray(
+            new { Color = WireColor.Black, Locations = "B1,D4,A4,D2,B4" },
+            new { Color = WireColor.Blue, Locations = "A2,C4,A1,C4,D4" },
+            new { Color = WireColor.Blue, Locations = "C3,C2,C1,D3,B1" },
+            new { Color = WireColor.Red, Locations = "A1,B3,C4,B2,B3" },
+            new { Color = WireColor.Red, Locations = "C4,D3,B1,C1,C2" },
+            new { Color = WireColor.White, Locations = "B2,C1,B4,A1,C1" },
+            new { Color = WireColor.White, Locations = "D3,D2,D4,B3,B2" },
+            new { Color = WireColor.Yellow, Locations = "A3,C3,A2,A4,A3" },
+            new { Color = WireColor.Yellow, Locations = "D1,A1,B2,B4,A4" },
+            new { Color = WireColor.Yellow, Locations = "D2,D1,D2,A2,D1" }
+        );
+
         List<WireInfo> wireInfos;
         var isSolved = false;
 
@@ -30,6 +43,8 @@ public class WirePlacementModule : MonoBehaviour
         var taken = Ut.NewArray<bool>(4, 4);
         var px = 0;
         var py = 0;
+        var c3Color = Rnd.Range(0, 5);
+
         for (int i = 0; i < 8; i++)
         {
             while (taken[px][py])
@@ -49,14 +64,14 @@ public class WirePlacementModule : MonoBehaviour
             var vert = px == 3 || taken[px + 1][py] ? true : py == 3 || taken[px][py + 1] ? false : Rnd.Range(0, 2) == 0;
             taken[px][py] = true;
             taken[vert ? px : px + 1][vert ? py + 1 : py] = true;
-            var color = (WireColor) Rnd.Range(0, 5);
+            var color = (WireColor) ((px == 2 && py == 2) || ((vert ? px : px + 1) == 2 && (vert ? py + 1 : py) == 2) ? c3Color : Rnd.Range(0, 5));
 
-            Func<string, bool> mustCut = coords => coords.Split(',').Any(coord =>
+            Func<string, bool> mustCut = coord =>
             {
                 var x = coord[0] - 'A';
                 var y = coord[1] - '1';
                 return (px == x && py == y) || (px == (vert ? x : x - 1) && py == (vert ? y - 1 : y));
-            });
+            };
 
             wireInfos.Add(new WireInfo
             {
@@ -65,17 +80,13 @@ public class WirePlacementModule : MonoBehaviour
                 Row = py,
                 Color = color,
                 IsVertical = vert,
-                MustCut =
-                    color == WireColor.Black ? mustCut("B1") :
-                    color == WireColor.Blue ? mustCut("A2,C3") :
-                    color == WireColor.Red ? mustCut("A1,C4") :
-                    color == WireColor.White ? mustCut("D3,B2") :
-                    color == WireColor.Yellow ? mustCut("D2,A3,D1") :
-                    false
+                MustCut = solutions.Where(sol => sol.Color == color).Any(sol => mustCut(sol.Locations.Split(',')[c3Color]))
             });
         }
         if (wireInfos.All(w => !w.MustCut))
             goto retry;
+
+        Debug.LogFormat("[Wire Placement] C3 wire is {0}.", (WireColor) c3Color);
 
         foreach (var wireFE in wireInfos)
         {
@@ -111,6 +122,9 @@ public class WirePlacementModule : MonoBehaviour
                 if (isSolved || wire.IsCut)
                     return false;
                 wire.IsCut = true;
+
+                wireObj.GetComponent<KMSelectable>().AddInteractionPunch();
+                Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.WireSnip, wireObj);
 
                 wireObj.GetComponent<MeshFilter>().mesh = cutMesh;
                 var copperObj = new GameObject { name = string.Format("Wire {0} copper", wire.Index + 1) }.transform;
