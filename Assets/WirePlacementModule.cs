@@ -20,8 +20,13 @@ public class WirePlacementModule : MonoBehaviour
     public Material[] WireMaterials;
     public Material CopperMaterial;
 
+    private static int _moduleIdCounter = 1;
+    private int _moduleId;
+
     void Start()
     {
+        _moduleId = _moduleIdCounter++;
+
         var solutions = Ut.NewArray(
             new { Color = WireColor.Black, Locations = "B1,D4,A4,D2,B4" },
             new { Color = WireColor.Blue, Locations = "A2,C4,A1,C4,D4" },
@@ -86,13 +91,13 @@ public class WirePlacementModule : MonoBehaviour
         if (wireInfos.All(w => !w.MustCut))
             goto retry;
 
-        Debug.LogFormat("[Wire Placement] C3 wire is {0}.", (WireColor) c3Color);
+        Debug.LogFormat("[Wire Placement #{1}] C3 wire is {0}.", (WireColor) c3Color, _moduleId);
 
         foreach (var wireFE in wireInfos)
         {
             var wire = wireFE;
 
-            Debug.LogFormat("[Wire Placement] {0} wire (#{5}) {1} from {2},{3} {4} be cut.", wire.Color, wire.IsVertical ? "vertical" : "horizontal", wire.Column + 1, wire.Row + 1, wire.MustCut ? "must" : "must not", wire.Index + 1);
+            Debug.LogFormat("[Wire Placement #{6}] {0} wire (#{5}) {1} from {2},{3} {4} be cut.", wire.Color, wire.IsVertical ? "vertical" : "horizontal", wire.Column + 1, wire.Row + 1, wire.MustCut ? "must" : "must not", wire.Index + 1, _moduleId);
 
             var seg = Rnd.Range(3, 5);
             var seed = Rnd.Range(0, int.MaxValue);
@@ -140,7 +145,7 @@ public class WirePlacementModule : MonoBehaviour
                 if (wireHighlightClone != null)
                     wireHighlightClone.GetComponent<MeshFilter>().mesh = cutHighlightMesh;
 
-                Debug.LogFormat("[Wire Placement] Cutting {0} wire (#{5}) {1} from {2},{3} was {4}.", wire.Color, wire.IsVertical ? "vertical" : "horizontal", wire.Column + 1, wire.Row + 1, wire.MustCut ? "correct" : "incorrect", wire.Index + 1);
+                Debug.LogFormat("[Wire Placement #{6}] Cutting {0} wire (#{5}) {1} from {2},{3} was {4}.", wire.Color, wire.IsVertical ? "vertical" : "horizontal", wire.Column + 1, wire.Row + 1, wire.MustCut ? "correct" : "incorrect", wire.Index + 1, _moduleId);
 
                 if (!wire.MustCut)
                 {
