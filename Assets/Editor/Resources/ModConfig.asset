@@ -13,5 +13,15 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   id: WirePlacement
   title: Wire Placement
+  description: 'Snip snip.
+
+
+    Module created by lumbud84, implemented by Timwi.
+
+
+    [url=http://ktane.timwi.de/PDF/Wire%20Placement.pdf]Manual PDF[/url]
+
+    [url=http://ktane.timwi.de/HTML/Wire%20Placement.html]Manual HTML[/url]'
   version: 1.0
   outputFolder: build
+  previewImage: {fileID: 2800000, guid: bd5c1f4881f57d54481b44e4c8a7779a, type: 3}

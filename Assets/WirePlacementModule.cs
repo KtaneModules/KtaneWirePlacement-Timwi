@@ -167,6 +167,10 @@ public class WirePlacementModule : MonoBehaviour
         MainSelectable.UpdateChildren();
     }
 
+#pragma warning disable 414
+    private string TwitchHelpMessage = @"Cut wires with “!{0} cut A2 B4 D3”.";
+#pragma warning restore 414
+
     KMSelectable[] ProcessTwitchCommand(string command)
     {
         var pieces = command.Trim().ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
