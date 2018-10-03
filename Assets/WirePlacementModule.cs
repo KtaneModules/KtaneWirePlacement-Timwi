@@ -15,6 +15,7 @@ public class WirePlacementModule : MonoBehaviour
     public KMBombInfo Bomb;
     public KMBombModule Module;
     public KMAudio Audio;
+    public KMRuleSeedable RuleSeedable;
 
     public KMSelectable MainSelectable;
     public Material[] WireMaterials;
@@ -28,18 +29,45 @@ public class WirePlacementModule : MonoBehaviour
     {
         _moduleId = _moduleIdCounter++;
 
-        var solutions = Ut.NewArray(
-            new { Color = WireColor.Black, Locations = "B1,D4,A4,D2,B4" },
-            new { Color = WireColor.Blue, Locations = "A2,C4,A1,C4,D4" },
-            new { Color = WireColor.Blue, Locations = "C3,C2,C1,D3,B1" },
-            new { Color = WireColor.Red, Locations = "A1,B3,C4,B2,B3" },
-            new { Color = WireColor.Red, Locations = "C4,D3,B1,C1,C2" },
-            new { Color = WireColor.White, Locations = "B2,C1,B4,A1,C1" },
-            new { Color = WireColor.White, Locations = "D3,D2,D4,B3,B2" },
-            new { Color = WireColor.Yellow, Locations = "A3,C3,A2,A4,A3" },
-            new { Color = WireColor.Yellow, Locations = "D1,A1,B2,B4,A4" },
-            new { Color = WireColor.Yellow, Locations = "D2,D1,D2,A2,D1" }
-        );
+        var rnd = RuleSeedable.GetRNG();
+
+        var coords = new[] { "A1", "A2", "A3", "A4", "B1", "C3", "B3", "B4", "C1", "C2", "B2", "C4", "D1", "D2", "D3", "D4" };
+        var specialWireCoordinate = coords[rnd.Next(0, coords.Length)];
+        var coordX = specialWireCoordinate[0] - 'A';
+        var coordY = specialWireCoordinate[1] - '1';
+
+        var colors = new List<WireColor> { WireColor.Black, WireColor.Blue, WireColor.Red, WireColor.White, WireColor.Yellow };
+
+        // All of this convoluted code is here to recreate the rules the module had before rule-seed support
+        for (var i = 0; i < 6; i++)
+            rnd.Next(0, 10);
+
+        while (colors.Count < 10)
+            colors.Add(new[] { WireColor.Black, WireColor.Blue, WireColor.Red, WireColor.White, WireColor.Yellow }[rnd.Next(0, 5)]);
+
+        rnd.ShuffleFisherYates(colors);
+        colors = new List<WireColor> { colors[4], colors[0], colors[5], colors[7], colors[3], colors[2], colors[1], colors[8], colors[6], colors[9] };
+
+        var columns = new List<string[]>();
+        coords = new[] { "C3", "A1", "C4", "A4", "B3", "B2", "D3", "B4", "A3", "D1", "A2", "C1", "B1", "C2", "D4", "D2" };
+        rnd.ShuffleFisherYates(coords);
+        columns.Add(coords.Take(10).ToArray());
+
+        coords = new[] { "A2", "A3", "D3", "D1", "C3", "C4", "A4", "C1", "B3", "C2", "B1", "B2", "B4", "D2", "A1", "D4" };
+        rnd.ShuffleFisherYates(coords);
+        columns.Add(coords.Take(10).ToArray());
+
+        coords = new[] { "A3", "B3", "C2", "B4", "B1", "D2", "C1", "A2", "A4", "C3", "D1", "A1", "D3", "C4", "D4", "B2" };
+        rnd.ShuffleFisherYates(coords);
+        columns.Add(coords.Take(10).ToArray());
+
+        coords = new[] { "C1", "A2", "A3", "B2", "D3", "B1", "C2", "C3", "C4", "D1", "B3", "D2", "D4", "A4", "B4", "A1" };
+        rnd.ShuffleFisherYates(coords);
+        columns.Add(coords.Take(10).ToArray());
+
+        coords = new[] { "A1", "A2", "D4", "A4", "C2", "C3", "B4", "C1", "C4", "B1", "D2", "B2", "B3", "A3", "D1", "D3" };
+        rnd.ShuffleFisherYates(coords);
+        columns.Add(coords.Take(10).ToArray());
 
         var isSolved = false;
 
@@ -48,7 +76,7 @@ public class WirePlacementModule : MonoBehaviour
         var taken = Ut.NewArray<bool>(4, 4);
         var px = 0;
         var py = 0;
-        var c3Color = Rnd.Range(0, 5);
+        var specialWireColor = Rnd.Range(0, 5);
 
         for (int i = 0; i < 8; i++)
         {
@@ -69,7 +97,7 @@ public class WirePlacementModule : MonoBehaviour
             var vert = px == 3 || taken[px + 1][py] ? true : py == 3 || taken[px][py + 1] ? false : Rnd.Range(0, 2) == 0;
             taken[px][py] = true;
             taken[vert ? px : px + 1][vert ? py + 1 : py] = true;
-            var color = (WireColor) ((px == 2 && py == 2) || ((vert ? px : px + 1) == 2 && (vert ? py + 1 : py) == 2) ? c3Color : Rnd.Range(0, 5));
+            var color = (WireColor) ((px == coordX && py == coordY) || ((vert ? px : px + 1) == coordX && (vert ? py + 1 : py) == coordY) ? specialWireColor : Rnd.Range(0, 5));
 
             Func<string, bool> mustCut = coord =>
             {
@@ -85,13 +113,13 @@ public class WirePlacementModule : MonoBehaviour
                 Row = py,
                 Color = color,
                 IsVertical = vert,
-                MustCut = solutions.Where(sol => sol.Color == color).Any(sol => mustCut(sol.Locations.Split(',')[c3Color]))
+                MustCut = Enumerable.Range(0, 10).Any(row => colors[row] == color && mustCut(columns[specialWireColor][row]))
             });
         }
         if (_wireInfos.All(w => !w.MustCut))
             goto retry;
 
-        Debug.LogFormat("[Wire Placement #{1}] C3 wire is {0}.", (WireColor) c3Color, _moduleId);
+        Debug.LogFormat("[Wire Placement #{1}] {2} wire is {0}.", (WireColor) specialWireColor, _moduleId, specialWireCoordinate);
 
         foreach (var wireFE in _wireInfos)
         {
@@ -168,7 +196,7 @@ public class WirePlacementModule : MonoBehaviour
     }
 
 #pragma warning disable 414
-    private string TwitchHelpMessage = @"Cut wires with “!{0} cut A2 B4 D3”.";
+    private readonly string TwitchHelpMessage = @"Cut wires with “!{0} cut A2 B4 D3”.";
 #pragma warning restore 414
 
     KMSelectable[] ProcessTwitchCommand(string command)
