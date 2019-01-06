@@ -30,6 +30,7 @@ public class WirePlacementModule : MonoBehaviour
         _moduleId = _moduleIdCounter++;
 
         var rnd = RuleSeedable.GetRNG();
+        Debug.LogFormat("[Wire Placement #{0}] Using rule seed: {1}", _moduleId, rnd.Seed);
 
         var coords = new[] { "A1", "A2", "A3", "A4", "B1", "C3", "B3", "B4", "C1", "C2", "B2", "C4", "D1", "D2", "D3", "D4" };
         var specialWireCoordinate = coords[rnd.Next(0, coords.Length)];
