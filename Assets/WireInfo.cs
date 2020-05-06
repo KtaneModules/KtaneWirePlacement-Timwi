@@ -9,6 +9,7 @@
         public WireColor Color;
         public bool MustCut;
         public bool IsCut;
+        public KMSelectable Selectable;
 
         public override string ToString()
         {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -151,14 +152,14 @@ public class WirePlacementModule : MonoBehaviour
             var cutHighlightMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Cut, true, seed);
             var copperMesh = MeshGenerator.GenerateWire(.0304, seg, MeshGenerator.WirePiece.Copper, false, seed);
 
-            var selectable = wireObj.GetComponent<KMSelectable>();
-            selectable.OnInteract = delegate
+            wire.Selectable = wireObj.GetComponent<KMSelectable>();
+            wire.Selectable.OnInteract = delegate
             {
                 if (isSolved || wire.IsCut)
                     return false;
                 wire.IsCut = true;
 
-                wireObj.GetComponent<KMSelectable>().AddInteractionPunch();
+                wire.Selectable.AddInteractionPunch();
                 Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.WireSnip, wireObj);
 
                 wireObj.GetComponent<MeshFilter>().mesh = cutMesh;
@@ -190,8 +191,8 @@ public class WirePlacementModule : MonoBehaviour
                 return false;
             };
 
-            MainSelectable.Children[wire.Column + 4 * wire.Row] = selectable;
-            MainSelectable.Children[wire.Column + (wire.IsVertical ? 0 : 1) + 4 * (wire.Row + (wire.IsVertical ? 1 : 0))] = selectable;
+            MainSelectable.Children[wire.Column + 4 * wire.Row] = wire.Selectable;
+            MainSelectable.Children[wire.Column + (wire.IsVertical ? 0 : 1) + 4 * (wire.Row + (wire.IsVertical ? 1 : 0))] = wire.Selectable;
         }
         MainSelectable.UpdateChildren();
     }
@@ -214,5 +215,15 @@ public class WirePlacementModule : MonoBehaviour
             list.Add(MainSelectable.Children[4 * (piece[1] - '1') + (piece[0] - 'a')]);
         }
         return list.ToArray();
+    }
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+        foreach (var inf in _wireInfos)
+            if (inf.MustCut && !inf.IsCut)
+            {
+                inf.Selectable.OnInteract();
+                yield return new WaitForSeconds(.1f);
+            }
     }
 }
